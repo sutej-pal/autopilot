@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-
-const api = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3001";
+import { apiFetch } from "../lib/api";
+import { TokenForm } from "./token-form";
 
 type Workflow = {
   id: string;
@@ -24,9 +24,15 @@ export default function HomePage() {
   const [runView, setRunView] = useState<RunView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [locked, setLocked] = useState(false);
 
   async function load() {
-    const response = await fetch(`${api}/workflows`);
+    const response = await apiFetch("/workflows");
+    if (response.status === 401) {
+      setLocked(true);
+      return;
+    }
+    setLocked(false);
     if (!response.ok) throw new Error(`API ${response.status}`);
     const body = (await response.json()) as Workflow[];
     setWorkflows(body);
@@ -44,7 +50,7 @@ export default function HomePage() {
       return;
     }
     setError(null);
-    const response = await fetch(`${api}/workflows/${id}`, {
+    const response = await apiFetch(`/workflows/${id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ name }),
@@ -59,7 +65,7 @@ export default function HomePage() {
 
   async function remove(workflow: Workflow) {
     setError(null);
-    const response = await fetch(`${api}/workflows/${workflow.id}`, { method: "DELETE" });
+    const response = await apiFetch(`/workflows/${workflow.id}`, { method: "DELETE" });
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
       setError(body.error || "Delete failed");
@@ -71,9 +77,10 @@ export default function HomePage() {
 
   async function run(id: string) {
     setError(null);
-    setRunView({ status: "A browser window is opening. The macro runs there." });
+    const hosted = window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
+    setRunView({ status: hosted ? "Running the macro on the server." : "A browser window is opening. The macro runs there." });
     setWatching(true);
-    const response = await fetch(`${api}/workflows/${id}/runs`, { method: "POST" });
+    const response = await apiFetch(`/workflows/${id}/runs`, { method: "POST" });
     const body = await response.json();
     setWatching(false);
     if (!response.ok) {
@@ -88,10 +95,11 @@ export default function HomePage() {
       <div className="top">
         <div>
           <h1>AutoPilot</h1>
-          <p className="muted">Local rehearsal on this computer. Nothing is sent to a cloud account.</p>
+          <p className="muted">Open a site and run a saved macro.</p>
         </div>
         <Link href="/record">Record</Link>
       </div>
+      {locked ? <TokenForm onUnlocked={() => load().catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))} /> : null}
       {error ? <p>{error}</p> : null}
       {runView ? (
         <p>

@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,7 +9,7 @@ import { RecordingSession, runWorkflow, type ClientEvent } from "@autopilot/brow
 import { FileStore, LOCAL_TENANT_ID, devVaultKey, parseWorkflow, type Workflow } from "@autopilot/shared";
 
 const sessions = new Map<string, RecordingSession>();
-const dataFile = fileURLToPath(new URL("../../../.data/store.json", import.meta.url));
+const dataFile = process.env.DATA_FILE || fileURLToPath(new URL("../../../.data/store.json", import.meta.url));
 const fixturePath = fileURLToPath(new URL("../../../packages/browser/fixtures/timesheet.html", import.meta.url));
 
 export async function buildServer() {
@@ -18,7 +18,39 @@ export async function buildServer() {
   await app.register(cors, { origin: true });
   await app.register(websocket);
 
-  app.get("/health", async () => ({ ok: true, mode: "local" }));
+  const accessToken = process.env.AUTOPILOT_TOKEN;
+  if (accessToken) {
+    app.addHook("onRequest", async (request, reply) => {
+      if (request.method === "OPTIONS") return;
+      const requestPath = request.url.split("?")[0];
+      if (requestPath === "/health" || requestPath === "/auth") return;
+      const header = request.headers.authorization;
+      const bearer = header?.startsWith("Bearer ") ? header.slice(7) : undefined;
+      const cookie = readCookie(request.headers.cookie, "autopilot_token");
+      const presented = bearer || cookie || "";
+      const expected = Buffer.from(accessToken);
+      const actual = Buffer.from(presented);
+      if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
+        return reply.code(401).send({ error: "Unauthorized" });
+      }
+    });
+  }
+
+  app.get("/health", async () => ({ ok: true, mode: process.env.RENDER === "true" ? "render" : "local" }));
+
+  app.post("/auth", async (request, reply) => {
+    if (!accessToken) return { ok: true };
+    const body = request.body as { token?: string };
+    const presented = body?.token || "";
+    const expected = Buffer.from(accessToken);
+    const actual = Buffer.from(presented);
+    if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
+      return reply.code(401).send({ error: "Unauthorized" });
+    }
+    const secure = process.env.RENDER === "true" ? "; Secure" : "";
+    reply.header("set-cookie", `autopilot_token=${encodeURIComponent(presented)}; HttpOnly; Path=/; SameSite=Lax; Max-Age=2592000${secure}`);
+    return { ok: true };
+  });
 
   app.get("/fixture/timesheet.html", async (_request, reply) => {
     return reply.type("text/html").send(readFileSync(fixturePath));
@@ -105,7 +137,7 @@ export async function buildServer() {
     const url = body.url && /^https?:\/\//.test(body.url) ? body.url : undefined;
     const result = await runWorkflow(workflow, {
       credentials: store.secrets(workflow.id),
-      headed: true,
+      headed: process.env.RENDER !== "true",
       url,
     });
     store.saveRun({
@@ -137,4 +169,13 @@ function publicWorkflow(workflow: Workflow) {
 
 export function dataDirectory(): string {
   return path.dirname(dataFile);
+}
+
+function readCookie(header: string | undefined, name: string): string | undefined {
+  if (!header) return undefined;
+  for (const part of header.split(";")) {
+    const [key, ...rest] = part.trim().split("=");
+    if (key === name) return decodeURIComponent(rest.join("="));
+  }
+  return undefined;
 }

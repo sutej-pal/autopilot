@@ -1,7 +1,8 @@
 import { EventEmitter } from "node:events";
 import type { CDPSession, Page } from "playwright";
-import { chromium, type Browser } from "playwright";
+import type { Browser } from "playwright";
 import type { Workflow } from "@autopilot/shared";
+import { launchChromium } from "./launch.js";
 import { replayWorkflow, type ReplayOptions, type ReplayResult } from "./replay.js";
 
 export type LiveRunResult = {
@@ -26,7 +27,7 @@ export class LiveRun extends EventEmitter {
   }
 
   static async open(workflow: Workflow, options: ReplayOptions = {}): Promise<LiveRun> {
-    const browser = await chromium.launch({ headless: true, args: ["--disable-dev-shm-usage"] });
+    const browser = await launchChromium(false);
     try {
       const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
       const page = await context.newPage();

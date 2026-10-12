@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import type { CDPSession, Frame, Page } from "playwright";
-import { chromium, type Browser, type BrowserContext } from "playwright";
+import type { Browser, BrowserContext } from "playwright";
 import {
   credentialNameForField,
   templatizeValue,
@@ -8,6 +8,7 @@ import {
   type Step,
 } from "@autopilot/shared";
 import { CAPTURE_SCRIPT } from "./capture-script.js";
+import { launchChromium } from "./launch.js";
 
 export type CapturedDraft = {
   startUrl: string;
@@ -65,7 +66,7 @@ export class RecordingSession extends EventEmitter {
     now?: Date;
     timezone?: string;
   }): Promise<RecordingSession> {
-    const browser = await chromium.launch({ headless: true, args: ["--disable-dev-shm-usage"] });
+    const browser = await launchChromium(false);
     try {
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     const session = new RecordingSession(

@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-
-const api = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3001";
+import { apiBase, apiFetch, apiSocket } from "../../lib/api";
+import { TokenForm } from "../token-form";
 
 type Step = { id: string; type: string; description?: string; value?: string; flags?: string[] };
 
@@ -13,28 +13,36 @@ export default function RecordPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const metaRef = useRef({ width: 1280, height: 800 });
-  const [startUrl, setStartUrl] = useState(`${api}/fixture/timesheet.html`);
+  const [startUrl, setStartUrl] = useState("");
+  const [locked, setLocked] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [steps, setSteps] = useState<Step[]>([]);
   const [name, setName] = useState("Daily timesheet");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    setStartUrl(`${apiBase()}/fixture/timesheet.html`);
+  }, []);
   useEffect(() => () => socketRef.current?.close(), []);
 
   async function start() {
     setError(null);
     setBusy(true);
     try {
-      const response = await fetch(`${api}/sessions`, {
+      const response = await apiFetch("/sessions", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ startUrl }),
       });
       const body = await response.json();
+      if (response.status === 401) {
+        setLocked(true);
+        return;
+      }
       if (!response.ok) throw new Error(body.error || "Could not start the recorder");
       setSessionId(body.id);
-      const socket = new WebSocket(`${api.replace(/^http/, "ws")}/sessions/${body.id}/stream`);
+      const socket = new WebSocket(apiSocket(`/sessions/${body.id}/stream`));
       socket.binaryType = "arraybuffer";
       socket.onmessage = (event) => {
         if (typeof event.data === "string") {
@@ -81,7 +89,7 @@ export default function RecordPage() {
     if (!sessionId) return;
     setBusy(true);
     try {
-      const response = await fetch(`${api}/sessions/${sessionId}/stop`, {
+      const response = await apiFetch(`/sessions/${sessionId}/stop`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name }),
@@ -102,7 +110,7 @@ export default function RecordPage() {
       <div className="top">
         <div>
           <h1>Record</h1>
-          <p className="muted">The browser runs on this computer. Password fields are stored as a credential token, not as text in the workflow.</p>
+          <p className="muted">Password fields are stored as a credential token, not as text in the workflow.</p>
         </div>
         <Link href="/">Workflows</Link>
       </div>
@@ -114,6 +122,7 @@ export default function RecordPage() {
         <button onClick={() => send({ type: "control", action: "arm-assert" })} disabled={!sessionId}>Add success check</button>
         <button onClick={() => send({ type: "control", action: "mark-variable", name: "hours" })} disabled={!sessionId}>Mark last fill as hours</button>
       </div>
+      {locked ? <TokenForm onUnlocked={() => setLocked(false)} /> : null}
       {error ? <p>{error}</p> : null}
       <div className="layout">
         <div className="stage">
