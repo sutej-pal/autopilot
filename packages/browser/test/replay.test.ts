@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { LOCAL_TENANT_ID, formatDate, parseWorkflow, type Workflow } from "@autopilot/shared";
-import { RecordingSession, replayWorkflow, runWorkflow } from "../src/index.js";
+import { LiveRun, RecordingSession, replayWorkflow, runWorkflow } from "../src/index.js";
 import { startFixture } from "./fixture-server.js";
 
 const now = new Date("2026-10-12T12:30:00.000Z");
@@ -127,6 +127,44 @@ test("datepicker clicks are flagged and an iframe click keeps its frame", { time
     assert.deepEqual(inner?.framePath, ["inner"]);
   } finally {
     await recording.close();
+    await fixture.close();
+  }
+});
+
+test("a watched run shows the page and then finishes", { timeout: 60_000 }, async () => {
+  const fixture = await startFixture();
+  const workflow = parseWorkflow({
+    id: "00000000-0000-4000-8000-0000000000dd",
+    tenantId: LOCAL_TENANT_ID,
+    name: "Watch",
+    startUrl: fixture.url,
+    timezone,
+    variables: [],
+    steps: [
+      { id: "s1", type: "goto", url: fixture.url, framePath: [], locators: [] },
+      { id: "s2", type: "click", description: 'Click "Submit timesheet"', framePath: [], locators: [{ strategy: "id", value: "submit" }] },
+    ],
+  });
+  const live = await LiveRun.open(workflow);
+  try {
+    const frame = new Promise<Buffer>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("No run frame arrived")), 15000);
+      live.once("frame", (buffer: Buffer) => {
+        clearTimeout(timer);
+        resolve(buffer);
+      });
+    });
+    const finished = new Promise<{ status: string }>((resolve) => {
+      live.once("result", (result: { status: string }) => resolve(result));
+    });
+    live.play();
+    const jpeg = await frame;
+    assert.equal(jpeg[0], 0xff);
+    assert.equal(jpeg[1], 0xd8);
+    const result = await finished;
+    assert.equal(result.status, "succeeded");
+  } finally {
+    await live.close();
     await fixture.close();
   }
 });

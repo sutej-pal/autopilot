@@ -9,6 +9,7 @@
     "dev": "pnpm --parallel --filter @autopilot/api --filter @autopilot/web dev",
     "test": "pnpm -r --if-present test",
     "dev:api": "pnpm --filter @autopilot/api dev",
-    "dev:web": "pnpm --filter @autopilot/web dev"
+    "dev:web": "pnpm --filter @autopilot/web dev",
+    "macro": "pnpm --filter @autopilot/worker start"
   }
 }

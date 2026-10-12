@@ -40,4 +40,8 @@ test("vault round-trips and the workflow file does not contain the password", ()
   assert.equal(raw.includes("s3cret-password"), false);
   assert.equal(store.secrets(workflow.id).password, "s3cret-password");
   assert.equal(store.get(workflow.id)?.steps[0]?.value, "{{credentials.password}}");
+  assert.equal(store.rename(workflow.id, "Morning timesheet")?.name, "Morning timesheet");
+  assert.equal(store.remove(workflow.id), true);
+  assert.equal(store.get(workflow.id), null);
+  assert.deepEqual(store.secrets(workflow.id), {});
 });

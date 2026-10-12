@@ -12,39 +12,75 @@ type Workflow = {
   stepCount: number;
 };
 
-type RunResult = {
+type RunView = {
   status: string;
-  outcome: string | null;
   error?: string;
-  steps: { stepId: string; status: string; error?: string }[];
 };
 
 export default function HomePage() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
-  const [result, setResult] = useState<RunResult | null>(null);
+  const [names, setNames] = useState<Record<string, string>>({});
+  const [watching, setWatching] = useState(false);
+  const [runView, setRunView] = useState<RunView | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   async function load() {
     const response = await fetch(`${api}/workflows`);
     if (!response.ok) throw new Error(`API ${response.status}`);
-    setWorkflows(await response.json());
+    const body = (await response.json()) as Workflow[];
+    setWorkflows(body);
+    setNames(Object.fromEntries(body.map((workflow) => [workflow.id, workflow.name])));
   }
 
   useEffect(() => {
     load().catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
   }, []);
 
-  async function run(id: string) {
-    setResult(null);
+  async function rename(id: string) {
+    const name = names[id]?.trim();
+    if (!name) {
+      setError("Name is required");
+      return;
+    }
     setError(null);
+    const response = await fetch(`${api}/workflows/${id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    const body = await response.json();
+    if (!response.ok) {
+      setError(body.error || "Rename failed");
+      return;
+    }
+    await load();
+  }
+
+  async function remove(workflow: Workflow) {
+    setError(null);
+    const response = await fetch(`${api}/workflows/${workflow.id}`, { method: "DELETE" });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      setError(body.error || "Delete failed");
+      return;
+    }
+    setPendingDeleteId(null);
+    await load();
+  }
+
+  async function run(id: string) {
+    setError(null);
+    setRunView({ status: "A browser window is opening. The macro runs there." });
+    setWatching(true);
     const response = await fetch(`${api}/workflows/${id}/runs`, { method: "POST" });
     const body = await response.json();
+    setWatching(false);
     if (!response.ok) {
       setError(body.error || "Run failed to start");
       return;
     }
-    setResult(body);
-    await load();
+    setRunView({ status: body.status === "succeeded" ? "Macro finished." : "Macro failed.", error: body.error });
   }
 
   return (
@@ -57,25 +93,38 @@ export default function HomePage() {
         <Link href="/record">Record</Link>
       </div>
       {error ? <p>{error}</p> : null}
-      {workflows.length === 0 ? <p className="muted">No saved workflows yet.</p> : null}
+      {runView ? (
+        <p>
+          <strong>{runView.status}</strong>
+          {runView.error ? ` ${runView.error}` : ""}
+        </p>
+      ) : null}
+      <p className="muted">{workflows.length === 0 ? "No saved workflows yet." : `${workflows.length} workflows, newest first.`}</p>
+      <div className="workflow-list">
       {workflows.map((workflow) => (
         <article className="card" key={workflow.id}>
           <div className="row">
-            <strong>{workflow.name}</strong>
+            <input
+              aria-label={`Name for ${workflow.name}`}
+              value={names[workflow.id] ?? workflow.name}
+              onChange={(event) => setNames((current) => ({ ...current, [workflow.id]: event.target.value }))}
+            />
+            <button onClick={() => rename(workflow.id)}>Rename</button>
             <span className="muted">{workflow.stepCount} steps</span>
-            <button className="primary" onClick={() => run(workflow.id)}>Run now</button>
+            <button className="primary" onClick={() => run(workflow.id)} disabled={watching}>Run now</button>
+            {pendingDeleteId === workflow.id ? (
+              <>
+                <button onClick={() => remove(workflow)}>Confirm delete</button>
+                <button onClick={() => setPendingDeleteId(null)}>Cancel</button>
+              </>
+            ) : (
+              <button onClick={() => setPendingDeleteId(workflow.id)}>Delete</button>
+            )}
           </div>
           <div className="muted">{workflow.startUrl}</div>
         </article>
       ))}
-      {result ? (
-        <pre>
-          {result.status} {result.outcome || ""}
-          {result.error ? `\n${result.error}` : ""}
-          {"\n"}
-          {result.steps.map((step) => `${step.stepId} ${step.status}${step.error ? ` ${step.error}` : ""}`).join("\n")}
-        </pre>
-      ) : null}
+      </div>
     </main>
   );
 }

@@ -26,6 +26,20 @@ export async function buildServer() {
 
   app.get("/workflows", async () => store.list().map(publicWorkflow));
 
+  app.patch("/workflows/:id", async (request, reply) => {
+    const body = request.body as { name?: string };
+    if (!body?.name?.trim()) return reply.code(400).send({ error: "Name is required" });
+    const workflow = store.rename((request.params as { id: string }).id, body.name);
+    if (!workflow) return reply.code(404).send({ error: "Workflow not found" });
+    return publicWorkflow(workflow);
+  });
+
+  app.delete("/workflows/:id", async (request, reply) => {
+    const removed = store.remove((request.params as { id: string }).id);
+    if (!removed) return reply.code(404).send({ error: "Workflow not found" });
+    return { ok: true };
+  });
+
   app.post("/sessions", async (request, reply) => {
     const body = request.body as { startUrl?: string };
     if (!body?.startUrl || !/^https?:\/\//.test(body.startUrl)) {
@@ -87,8 +101,14 @@ export async function buildServer() {
   app.post("/workflows/:id/runs", async (request, reply) => {
     const workflow = store.get((request.params as { id: string }).id);
     if (!workflow) return reply.code(404).send({ error: "Workflow not found" });
-    const result = await runWorkflow(workflow, { credentials: store.secrets(workflow.id) });
-    const run = {
+    const body = (request.body as { url?: string } | undefined) ?? {};
+    const url = body.url && /^https?:\/\//.test(body.url) ? body.url : undefined;
+    const result = await runWorkflow(workflow, {
+      credentials: store.secrets(workflow.id),
+      headed: true,
+      url,
+    });
+    store.saveRun({
       id: randomUUID(),
       workflowId: workflow.id,
       status: result.status,
@@ -96,9 +116,8 @@ export async function buildServer() {
       error: result.error,
       steps: result.steps,
       createdAt: new Date().toISOString(),
-    };
-    store.saveRun(run);
-    return run;
+    });
+    return { status: result.status, outcome: result.outcome, error: result.error };
   });
 
   return app;

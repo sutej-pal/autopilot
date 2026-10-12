@@ -29,7 +29,7 @@ export class FileStore {
   }
 
   list(): Workflow[] {
-    return this.read().workflows;
+    return this.read().workflows.slice().reverse();
   }
 
   get(id: string): Workflow | null {
@@ -44,6 +44,28 @@ export class FileStore {
     else disk.workflows.push(parsed);
     disk.vault[parsed.id] = encryptJson(this.key, secrets);
     this.write(disk);
+  }
+
+  rename(id: string, name: string): Workflow | null {
+    const trimmed = name.trim();
+    if (!trimmed) throw new Error("Workflow name is required");
+    const disk = this.read();
+    const workflow = disk.workflows.find((item) => item.id === id);
+    if (!workflow) return null;
+    workflow.name = trimmed;
+    this.write(disk);
+    return workflow;
+  }
+
+  remove(id: string): boolean {
+    const disk = this.read();
+    const next = disk.workflows.filter((item) => item.id !== id);
+    if (next.length === disk.workflows.length) return false;
+    disk.workflows = next;
+    delete disk.vault[id];
+    disk.runs = disk.runs.filter((run) => run.workflowId !== id);
+    this.write(disk);
+    return true;
   }
 
   secrets(workflowId: string): Record<string, string> {

@@ -1,5 +1,7 @@
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; }
+html, body { margin: 0; min-height: 100%; }
+.workflow-list { display: flex; flex-direction: column; }
+.workflow-list input { min-width: 220px; padding: 6px 8px; border: 1px solid #d6d3d1; border-radius: 6px; }
 body {
   font: 14px/1.4 ui-sans-serif, system-ui, sans-serif;
   color: #1c1917;
@@ -24,6 +26,7 @@ button.primary { background: #1c1917; color: white; border-color: #1c1917; }
 .card { background: white; border: 1px solid #e7e5e4; border-radius: 8px; padding: 12px 14px; margin-top: 12px; }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; margin-top: 16px; }
 .stage { background: #292524; border-radius: 8px; min-height: 480px; display: flex; align-items: center; justify-content: center; }
+.run-stage { min-height: 0; margin-top: 12px; }
 canvas { width: 100%; height: auto; cursor: crosshair; background: #0c0a09; }
 .steps { max-height: 640px; overflow: auto; }
 .step { padding: 8px 0; border-bottom: 1px solid #e7e5e4; }

@@ -27,6 +27,9 @@ export type ReplayOptions = {
   locatorTimeoutMs?: number;
   credentials?: Record<string, string>;
   variables?: Record<string, string>;
+  onStep?: (step: Step) => void;
+  headed?: boolean;
+  url?: string;
 };
 
 type Resolved = { index: number };
@@ -50,6 +53,7 @@ export async function replayWorkflow(page: Page, workflow: Workflow, options: Re
 
   for (let i = 0; i < workflow.steps.length; i++) {
     const step = workflow.steps[i]!;
+    options.onStep?.(step);
     if (step.commit) commitReached = true;
     try {
       if (step.type === "guard") {
