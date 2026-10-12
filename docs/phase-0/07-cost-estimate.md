@@ -1,6 +1,18 @@
 # Cost estimate
 
-These are planning figures, not a quote. They were **not** pulled from the AWS Price List API, and nothing was deployed. Treat them as order-of-magnitude.
+## Decision (2026-10-12): prove it locally before any cloud bill
+
+The product is tested on this PC until a recorded workflow replays and passes its success check. That path is **$0**. No AWS account, NAT gateway, load balancer, Fargate, RDS, or KMS.
+
+The AWS free tier is the wrong place to run this stack, even as a trial:
+
+- The free EC2 shape is about 1 GB of RAM. Chromium plus the API on that instance is expected to run out of memory. This is not a measurement yet; it is why we are not trying it.
+- NAT Gateway, an application load balancer, and Fargate are not included in the free tier. Those three lines are most of the ~$340 floor below.
+- RDS and S3 have free-tier allowances, and the SES sandbox can mail verified addresses at no charge. None of that helps until a browser run has succeeded.
+
+If a local replay of the timesheet works, the next hosting step is a decision, not an automatic deploy of the production sketch. A single small VM is the likely bridge. The multi-AZ layout stays the scale design. Nothing in AWS is created until you ask for it.
+
+These production figures below are planning numbers, not a quote. They were **not** pulled from the AWS Price List API, and nothing was deployed. Treat them as order-of-magnitude.
 
 Method: public us-east-1 on-demand list prices remembered for the main ECS, RDS, NAT, and ALB meters, then **+10%** as a rough stand-in for `ap-south-1`. Fargate is Linux/x86. Prices move; recompute before Phase 5 with the pricing API or the AWS calculator.
 

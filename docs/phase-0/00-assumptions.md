@@ -21,6 +21,10 @@ Recorded in [portal profile](./10-portal-timesheet.md).
 - The workflow timezone defaults to `Asia/Kolkata` from the user profile. Schedules are wall-clock times in that zone, stored as UTC instants.
 - The site URL is still unknown. Phase 1 rehearses on a public demo and a local fixture, not on the real portal.
 
+## Hosting until a replay succeeds
+
+Local Node on this machine, file-backed vault, no cloud resources. Scale-up, including any free-tier account, waits until record-and-replay has been run and the result is worth paying to host. See the decision at the top of [cost estimate](./07-cost-estimate.md).
+
 ## Stack choices inside the approved set
 
 - **Drizzle** for Postgres access and SQL migrations. Row-level security and partial unique indexes need to stay visible as SQL. Prisma stays unused unless you reject Drizzle.

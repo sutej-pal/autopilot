@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Timesheet fixture</title>
+  </head>
+  <body>
+    <h1>Timesheet</h1>
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" autocomplete="username" />
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" />
+    <label for="day">Day</label>
+    <input id="day" name="day" type="text" placeholder="YYYY-MM-DD" />
+    <label for="hours">Hours</label>
+    <input id="hours" name="hours" type="text" />
+    <button id="submit" type="button">Submit timesheet</button>
+    <p id="existing"></p>
+    <p id="result" hidden>Timesheet submitted</p>
+    <button id="open-cal" type="button">Open calendar</button>
+    <div id="calendar" class="datepicker" hidden>
+      <button id="day-btn" type="button">12</button>
+    </div>
+    <iframe name="inner" title="inner" srcdoc="<button id=&quot;inner-btn&quot;>Inside frame</button><p id=&quot;inner-out&quot;></p><script>document.getElementById('inner-btn').onclick=function(){document.getElementById('inner-out').textContent='Frame clicked'};</script>"></iframe>
+    <script>
+      const params = new URLSearchParams(location.search);
+      let hours = params.get("existing") === "1" ? 8 : 0;
+      const existing = document.getElementById("existing");
+      function renderExisting() {
+        existing.textContent = hours > 0 ? "Hours today: " + hours : "";
+      }
+      renderExisting();
+      document.getElementById("submit").addEventListener("click", () => {
+        const add = Number(document.getElementById("hours").value || "8");
+        hours += add;
+        renderExisting();
+        document.getElementById("result").hidden = false;
+      });
+      document.getElementById("open-cal").addEventListener("click", () => {
+        document.getElementById("calendar").hidden = false;
+      });
+    </script>
+  </body>
+</html>

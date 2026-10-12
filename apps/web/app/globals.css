@@ -1,0 +1,35 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font: 14px/1.4 ui-sans-serif, system-ui, sans-serif;
+  color: #1c1917;
+  background: #f5f5f4;
+}
+a { color: #1d4ed8; }
+button, input {
+  font: inherit;
+}
+button {
+  border: 1px solid #d6d3d1;
+  background: white;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+button.primary { background: #1c1917; color: white; border-color: #1c1917; }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.muted { color: #57534e; }
+.row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.card { background: white; border: 1px solid #e7e5e4; border-radius: 8px; padding: 12px 14px; margin-top: 12px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; margin-top: 16px; }
+.stage { background: #292524; border-radius: 8px; min-height: 480px; display: flex; align-items: center; justify-content: center; }
+canvas { width: 100%; height: auto; cursor: crosshair; background: #0c0a09; }
+.steps { max-height: 640px; overflow: auto; }
+.step { padding: 8px 0; border-bottom: 1px solid #e7e5e4; }
+.step code { font-size: 12px; }
+.url { flex: 1; min-width: 240px; padding: 6px 8px; border: 1px solid #d6d3d1; border-radius: 6px; }
+pre { white-space: pre-wrap; background: #fafaf9; padding: 8px; border-radius: 6px; }
+@media (max-width: 800px) {
+  .layout { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@autopilot/browser",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "node --import tsx --test test/replay.test.ts test/public-demo.test.ts"
+  },
+  "dependencies": {
+    "@autopilot/shared": "workspace:*",
+    "playwright": "1.49.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.3"
+  }
+}

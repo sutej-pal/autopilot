@@ -1,0 +1,14 @@
+{
+  "name": "autopilot",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @autopilot/api --filter @autopilot/web dev",
+    "test": "pnpm -r --if-present test",
+    "dev:api": "pnpm --filter @autopilot/api dev",
+    "dev:web": "pnpm --filter @autopilot/web dev"
+  }
+}
